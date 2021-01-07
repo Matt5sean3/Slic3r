@@ -7,6 +7,13 @@
 #include <sstream>
 #include <exception> // std::runtime_error
 #include <set>
+
+#ifdef NO_EXTERNAL_BOOST
+
+#include <regex>
+
+#else
+
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/erase.hpp>
@@ -16,10 +23,15 @@
 #include <boost/config.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/nowide/cenv.hpp>
-#include <boost/nowide/fstream.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
+
+#endif
+
+// nowide has been brought to be internal
+#include <boost/nowide/cenv.hpp>
+#include <boost/nowide/fstream.hpp>
+
 #include <string.h>
 
 namespace Slic3r {
@@ -214,10 +226,15 @@ ConfigOptionDef::~ConfigOptionDef()
 std::vector<std::string>
 ConfigOptionDef::cli_args() const
 {
-    std::string cli = this->cli.substr(0, this->cli.find("="));
-    boost::trim_right_if(cli, boost::is_any_of("!"));
     std::vector<std::string> args;
+
+    std::string cli = this->cli.substr(0, this->cli.find("="));
+#ifdef NO_EXTERNAL_BOOST
+    cli = std::regex_replace( cli, std::basic_regex( "!*$" ), "" );
+#else
+    boost::trim_right_if(cli, boost::is_any_of("!"));
     boost::split(args, cli, boost::is_any_of("|"));
+#endif
     return args;
 }
 

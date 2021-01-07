@@ -964,7 +964,7 @@ TriangleMeshSlicer<A>::slice(const std::vector<float> &z, std::vector<Polygons>*
         parallelize<int>(
             0,
             this->mesh->stl.stats.number_of_facets-1,
-            boost::bind(&TriangleMeshSlicer<A>::_slice_do, this, _1, &lines, &lines_mutex, z)
+            boost::bind(&TriangleMeshSlicer<A>::_slice_do, this, boost::placeholders::_1, &lines, &lines_mutex, z)
         );
     }
     
@@ -975,7 +975,7 @@ TriangleMeshSlicer<A>::slice(const std::vector<float> &z, std::vector<Polygons>*
     parallelize<size_t>(
         0,
         lines.size()-1,
-        boost::bind(&TriangleMeshSlicer<A>::_make_loops_do, this, _1, &lines, layers)
+        boost::bind(&TriangleMeshSlicer<A>::_make_loops_do, this, boost::placeholders::_1, &lines, layers)
     );
 }
 

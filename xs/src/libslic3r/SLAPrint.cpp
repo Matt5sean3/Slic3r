@@ -71,7 +71,7 @@ SLAPrint::slice()
         parallelize<size_t>(
             0,
             this->layers.size()-1,
-            boost::bind(&SLAPrint::_infill_layer, this, _1, fill.get()),
+            boost::bind(&SLAPrint::_infill_layer, this, boost::placeholders::_1, fill.get()),
             this->config.threads.value
         );
     }

@@ -53,7 +53,7 @@ SupportMaterial::generate_toolpaths(PrintObject *object,
     parallelize<size_t>(
         0,
         object->support_layers.size() - 1,
-        boost::bind(&SupportMaterial::process_layer, this, _1, params),
+        boost::bind(&SupportMaterial::process_layer, this, boost::placeholders::_1, params),
         this->config->threads.value
     );
 }

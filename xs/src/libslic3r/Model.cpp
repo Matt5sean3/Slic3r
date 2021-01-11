@@ -4,7 +4,8 @@
 #include <iostream>
 #include <set>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/filesystem.hpp>
+
+#include "compat/filesystem.hpp"
 
 namespace Slic3r {
 
@@ -48,7 +49,7 @@ Model::~Model()
 Model
 Model::read_from_file(std::string input_file)
 {
-    if (!boost::filesystem::exists(input_file)) {
+    if (!compat::filesystem::exists(input_file)) {
         throw std::runtime_error("No such file");
     }
     
@@ -934,7 +935,7 @@ ModelObject::cut(Axis axis, coordf_t z, Model* model) const
         upper->input_file = "upper";
         lower->input_file = "lower";
     } else {
-        const boost::filesystem::path p{this->input_file};
+        const compat::filesystem::path p{this->input_file};
         upper->input_file = (p.parent_path() / p.stem()).string() + "_upper";
         lower->input_file = (p.parent_path() / p.stem()).string() + "_lower";
     }
@@ -1013,7 +1014,7 @@ ModelObject::print_info() const
 {
     using namespace std;
     cout << fixed;
-    cout << "[" << boost::filesystem::path(this->input_file).filename().string() << "]" << endl;
+    cout << "[" << compat::filesystem::path(this->input_file).filename().string() << "]" << endl;
     
     TriangleMesh mesh = this->mesh();
     mesh.check_topology();

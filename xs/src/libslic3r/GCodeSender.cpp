@@ -7,6 +7,8 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/lexical_cast.hpp>
+#include "compat/thread.hpp"
+#include "compat/bind.hpp"
 
 #if defined(__APPLE__) || defined(__OpenBSD__)
 #include <termios.h>
@@ -100,10 +102,10 @@ GCodeSender::connect(std::string devname, unsigned int baud_rate)
     
     // this gives some work to the io_service before it is started
     // (post() runs the supplied function in its thread)
-    this->io.post(boost::bind(&GCodeSender::do_read, this));
+    this->io.post(compat::bind(&GCodeSender::do_read, this));
     
     // start reading in the background thread
-    boost::thread t(boost::bind(&asio::io_service::run, &this->io));
+    compat::thread t(compat::bind(&asio::io_service::run, &this->io));
     this->background_thread.swap(t);
     
     // always send a M105 to check for connection because firmware might be silent on connect 
@@ -158,7 +160,7 @@ GCodeSender::disconnect()
     if (!this->open) return;
     this->open = false;
     this->connected = false;
-    this->io.post(boost::bind(&GCodeSender::do_close, this));
+    this->io.post(compat::bind(&GCodeSender::do_close, this));
     this->background_thread.join();
     this->io.reset();
     /*
@@ -293,7 +295,7 @@ GCodeSender::do_read()
         this->serial,
         this->read_buffer,
         '\n',
-        boost::bind(
+        compat::bind(
             &GCodeSender::on_read,
             this,
             asio::placeholders::error,
@@ -443,7 +445,7 @@ GCodeSender::send(const std::string &line, bool priority)
 void
 GCodeSender::send()
 {
-    this->io.post(boost::bind(&GCodeSender::do_send, this));
+    this->io.post(compat::bind(&GCodeSender::do_send, this));
 }
 
 void
@@ -504,7 +506,7 @@ GCodeSender::do_send()
     // stack and the buffer would lose its underlying storage causing memory corruption
     std::ostream os(&this->write_buffer);
     os << full_line;
-    asio::async_write(this->serial, this->write_buffer, boost::bind(&GCodeSender::on_write, this, boost::asio::placeholders::error,
+    asio::async_write(this->serial, this->write_buffer, compat::bind(&GCodeSender::on_write, this, boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
 }
 

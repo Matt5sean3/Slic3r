@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
+#include "compat/bind.hpp"
+#include "compat/thread.hpp"
 #include <boost/core/noncopyable.hpp>
 
 namespace Slic3r {
@@ -39,7 +39,7 @@ class GCodeSender : private boost::noncopyable {
     private:
     asio::io_service io;
     asio::serial_port serial;
-    boost::thread background_thread;
+    compat::thread background_thread;
     boost::asio::streambuf read_buffer, write_buffer;
     bool open;      // whether the serial socket is connected
     bool connected; // whether the printer is online

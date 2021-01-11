@@ -7,7 +7,7 @@
 #include "Geometry.hpp"
 #include "SupportMaterial.hpp"
 #include <algorithm>
-#include <boost/filesystem.hpp>
+#include "compat/filesystem.hpp"
 #include <boost/lexical_cast.hpp>
 #include <cstdio>
 #include <cstdlib>
@@ -672,7 +672,7 @@ Print::add_model_object(ModelObject* model_object, int idx)
         pp.set("scale", v_scale);
         if (!input_file.empty()) {
             // get basename with and without suffix
-            const std::string input_basename = boost::filesystem::path(input_file).filename().string();
+            const std::string input_basename = compat::filesystem::path(input_file).filename().string();
             pp.set("input_filename", input_basename);
             const std::string input_basename_base = input_basename.substr(0, input_basename.find_last_of("."));
             pp.set("input_filename_base", input_basename_base);
@@ -1429,12 +1429,12 @@ Print::output_filepath(const std::string &path)
             input_file = (*object)->model_object()->input_file;
             if (!input_file.empty()) break;
         }
-        return (boost::filesystem::path(input_file).parent_path() / this->output_filename()).string();
+        return (compat::filesystem::path(input_file).parent_path() / this->output_filename()).string();
     }
     
     // if we were supplied a directory, use it and append our automatically generated filename
-    boost::filesystem::path p(path);
-    if (boost::filesystem::is_directory(p))
+    compat::filesystem::path p(path);
+    if (compat::filesystem::is_directory(p))
         return (p / this->output_filename()).string();
     
     // if we were supplied a file which is not a directory, use it

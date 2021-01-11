@@ -15,7 +15,7 @@
 #include <iomanip>
 #include <iostream>
 #include <math.h>
-#include <boost/filesystem.hpp>
+#include <libslic3r/compat/filesystem.hpp>
 #include <boost/nowide/args.hpp>
 #include <boost/nowide/iostream.hpp>
 #include <stdexcept>
@@ -58,7 +58,7 @@ int CLI::run(int argc, char **argv) {
     // load config files supplied via --load
     for (auto const &file : config.getStrings("load", {})) {
         try{
-            if (!boost::filesystem::exists(file)) {
+            if (!compat::filesystem::exists(file)) {
                 if (config.getBool("ignore_nonexistent_file", false)) {
                     continue;
                 } else {
@@ -429,7 +429,7 @@ CLI::output_filepath(const Model &model, IO::ExportFormat format) const {
     // TODO: factor it out to a single place?
     
     // find the first input_file of the model
-    boost::filesystem::path input_file;
+    compat::filesystem::path input_file;
     for (auto o : model.objects) {
         if (!o->input_file.empty()) {
             input_file = o->input_file;
@@ -448,8 +448,8 @@ CLI::output_filepath(const Model &model, IO::ExportFormat format) const {
     std::string outfile{ this->config.getString("output", "") };
     if (!outfile.empty()) {
         // if we were supplied a directory, use it and append our automatically generated filename
-        const boost::filesystem::path out(outfile);
-        if (boost::filesystem::is_directory(out))
+        const compat::filesystem::path out(outfile);
+        if (compat::filesystem::is_directory(out))
             outfile = (out / filename).string();
     } else {
         outfile = (input_file.parent_path() / filename).string();

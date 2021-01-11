@@ -16,11 +16,9 @@
 #include <vector>
 #include <cstdint>
 
-#ifndef NO_EXTERNAL_BOOST
-#include <boost/thread.hpp>
-#else
-#include <thread>
-#endif
+#include "compat/thread.hpp"
+#include "compat/bind.hpp"
+#include "compat/function.hpp"
 
 #ifdef _MSC_VER
 #include <limits>
@@ -54,7 +52,7 @@ void confess_at(const char *file, int line, const char *func, const char *pat, .
     #define STDMOVE(WHAT) (WHAT)
 #endif
 
-#if SLIC3R_CPPVER < 17 && NO_EXTERNAL_BOOST
+#if SLIC3R_CPPVER < 17 && NO_COMPILED_BOOST
     #error Compiling without use of external boost libraries requires C++17 or later
 #endif
 
@@ -112,30 +110,6 @@ constexpr float CLIPPER_OFFSET_SCALE = 100000.0;
 
 enum Axis { X=0, Y, Z };
 
-// a namespace to smooth differences between boost and std
-namespace _
-{
-#ifdef NO_EXTERNAL_BOOST
-    using std::mutex;
-    using std::thread;
-    using std::function;
-    using std::lock_guard;
-    namespace this_thread
-    {
-        using namespace std::this_thread;
-    }
-#else
-    using boost::mutex;
-    using boost::thread;
-    using boost::function;
-    using boost::lock_guard;
-    namespace this_thread
-    {
-        using namespace boost::this_thread;
-    }
-#endif
-}
-
 template <class T>
 inline void append_to(std::vector<T> &dst, const std::vector<T> &src)
 {
@@ -143,48 +117,39 @@ inline void append_to(std::vector<T> &dst, const std::vector<T> &src)
 }
 
 template <class T> void
-_parallelize_do(std::queue<T>* queue, _::mutex* queue_mutex, _::function<void(T)> func)
+_parallelize_do(std::queue<T>* queue, compat::mutex* queue_mutex, compat::function<void(T)> func)
 {
-    //std::cout << "THREAD STARTED: " << _::this_thread::get_id() << std::endl;
+    //std::cout << "THREAD STARTED: " << compat::this_thread::get_id() << std::endl;
     while (true) {
         T i;
         {
-            _::lock_guard<_::mutex> l(*queue_mutex);
+            compat::lock_guard<compat::mutex> l(*queue_mutex);
             if (queue->empty()) return;
             i = queue->front();
             queue->pop();
         }
-        //std::cout << "  Thread " << _::this_thread::get_id() << " processing item " << i << std::endl;
+        //std::cout << "  Thread " << compat::this_thread::get_id() << " processing item " << i << std::endl;
         func(i);
-#ifndef NO_EXTERNAL_BOOST
-        boost::this_thread::interruption_point();
-#endif
+        compat::this_thread::interruption_point();
     }
 }
 
 template <class T> void
-parallelize(std::queue<T> queue, _::function<void(T)> func,
-    int threads_count = _::thread::hardware_concurrency())
+parallelize(std::queue<T> queue, compat::function<void(T)> func,
+    int threads_count = compat::thread::hardware_concurrency())
 {
     if (threads_count == 0) threads_count = 2;
-    _::mutex queue_mutex;
-#ifdef NO_EXTERNAL_BOOST
-    std::vector<std::thread> workers;
-    for( int i = 0; i < std::min(threads_count, (int)queue.size()); i++)
-        workers.push( std::thread(&_parallelize_do<T>, &queue, &queue_mutex, func));
-    for(auto worker : workers)
-        worker.join();
-#else
-    boost::thread_group workers;
+    compat::mutex queue_mutex;
+
+    compat::thread_group workers;
     for (int i = 0; i < std::min(threads_count, (int)queue.size()); i++)
-        workers.add_thread(new boost::thread(&_parallelize_do<T>, &queue, &queue_mutex, func));
+        workers.add_thread(new compat::thread(&_parallelize_do<T>, &queue, &queue_mutex, func));
     workers.join_all();
-#endif
 }
 
 template <class T> void
-parallelize(T start, T end, _::function<void(T)> func,
-    int threads_count = _::thread::hardware_concurrency())
+parallelize(T start, T end, compat::function<void(T)> func,
+    int threads_count = compat::thread::hardware_concurrency())
 {
     std::queue<T> queue;
     for (T i = start; i <= end; ++i) queue.push(i);

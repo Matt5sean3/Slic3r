@@ -1,5 +1,5 @@
 #include "GCodeTimeEstimator.hpp"
-#include <boost/bind.hpp>
+#include "compat/bind.hpp"
 #include <cmath>
 
 namespace Slic3r {
@@ -7,13 +7,13 @@ namespace Slic3r {
 void
 GCodeTimeEstimator::parse(const std::string &gcode)
 {
-    GCodeReader::parse(gcode, boost::bind(&GCodeTimeEstimator::_parser, this, boost::placeholders::_1, boost::placeholders::_2));
+    GCodeReader::parse(gcode, compat::bind(&GCodeTimeEstimator::_parser, this, compat::placeholders::_1, compat::placeholders::_2));
 }
 
 void
 GCodeTimeEstimator::parse_file(const std::string &file)
 {
-    GCodeReader::parse_file(file, boost::bind(&GCodeTimeEstimator::_parser, this, boost::placeholders::_1, boost::placeholders::_2));
+    GCodeReader::parse_file(file, compat::bind(&GCodeTimeEstimator::_parser, this, compat::placeholders::_1, compat::placeholders::_2));
 }
 
 void

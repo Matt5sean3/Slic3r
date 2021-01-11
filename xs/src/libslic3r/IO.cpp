@@ -3,7 +3,9 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
-#include <boost/filesystem.hpp>
+
+#include "compat/filesystem.hpp"
+
 #include <boost/nowide/fstream.hpp>
 
 #define TINYOBJLOADER_IMPLEMENTATION
@@ -53,7 +55,7 @@ STL::read(std::string input_file, Model* model)
         throw std::runtime_error("This STL file couldn't be read because it's empty.");
     
     ModelObject* object = model->add_object();
-    object->name        = boost::filesystem::path(input_file).filename().string();
+    object->name        = compat::filesystem::path(input_file).filename().string();
     object->input_file  = input_file;
     
     ModelVolume* volume = object->add_volume(mesh);
@@ -111,7 +113,7 @@ OBJ::read(std::string input_file, Model* model)
         throw std::runtime_error("Error while reading OBJ file");
     
     ModelObject* object = model->add_object();
-    object->name        = boost::filesystem::path(input_file).filename().string();
+    object->name        = compat::filesystem::path(input_file).filename().string();
     object->input_file  = input_file;
     
     // Loop over shapes and add a volume for each one.

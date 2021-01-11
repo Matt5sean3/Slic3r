@@ -8,7 +8,9 @@ option(SLIC3R_STATIC "Build and link Slic3r statically." ON)
 option(BUILD_EXTRUDE_TIN "Build and link the extrude-tin application." OFF)
 option(PROFILE "Build with gprof profiling output." OFF)
 option(COVERAGE "Build with gcov code coverage profiling." OFF)
+option(NO_COMPILED_BOOST "Build such that any boost libraries used are header-only" OFF)
 
+set(LIBSLIC3R_CXX_STD cxx_std_11)
 # only on newer GCCs: -ftemplate-backtrace-limit=0
 add_compile_options(-DNO_PERL -DM_PI=3.14159265358979323846 -DHAS_BOOL -DNOGDI -DBOOST_ASIO_DISABLE_KQUEUE)
 
@@ -114,9 +116,6 @@ endif(NOT GIT_VERSION STREQUAL "")
 
 find_package(Threads REQUIRED)
 
-set(Boost_NO_BOOST_CMAKE ON)
-find_package(Boost REQUIRED COMPONENTS system thread filesystem)
-
 set(LIBDIR ${CMAKE_CURRENT_SOURCE_DIR}/../xs/src/)
 set(GUI_LIBDIR ${CMAKE_CURRENT_SOURCE_DIR}/GUI/)
 
@@ -125,6 +124,21 @@ set(GUI_TESTDIR ${CMAKE_CURRENT_SOURCE_DIR}/test/GUI/)
 
 # directory that contains the dependent non-source files, like models and configurations
 set(TESTFILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test/inputs/)
+
+set(Boost_NO_BOOST_CMAKE ON)
+if(NO_COMPILED_BOOST)
+  # Mostly drops out thread and filesystem
+  set(Boost_LIBRARIES "")
+  # Use switches to use the standard library instead
+  add_compile_options(-DNO_COMPILED_BOOST)
+  # Need to compile using C++17, which has the filesystem STL header
+  set(LIBSLIC3R_CXX_STD cxx_std_17)
+  set(COMPAT_SRC
+    ${LIBDIR}/libslic3r/compat/thread.cpp )
+else(NO_COMPILED_BOOST)
+  set(Boost_NO_BOOST_CMAKE ON)
+  find_package(Boost REQUIRED COMPONENTS system thread filesystem)
+endif(NO_COMPILED_BOOST)
 
 set(EXPAT_INCLUDES
     ${LIBDIR}/expat
@@ -227,8 +241,9 @@ add_library(libslic3r STATIC
     ${LIBDIR}/libslic3r/TransformationMatrix.cpp
     ${LIBDIR}/libslic3r/SupportMaterial.cpp
     ${LIBDIR}/libslic3r/utils.cpp
+    ${COMPAT_SRC}
 )
-target_compile_features(libslic3r PUBLIC cxx_std_11)
+target_compile_features(libslic3r PUBLIC ${LIBSLIC3R_CXX_STD})
 target_include_directories(libslic3r SYSTEM PUBLIC ${SLIC3R_INCLUDES})
 target_include_directories(libslic3r PUBLIC ${LIBSLIC3R_INCLUDES})
 

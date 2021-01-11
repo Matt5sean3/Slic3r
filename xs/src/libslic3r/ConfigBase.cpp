@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <exception> // std::runtime_error

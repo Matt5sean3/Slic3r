@@ -80,3 +80,21 @@ Contributions by Henrik Brix Andersen, Vojtech Bubnik, Nicolas Dandrimont, Mark 
 ### How can I invoke Slic3r using the command line?
 
 The command line is documented in the relevant [manual page](https://manual.slic3r.org/advanced/command-line).
+
+## Building libSlic3r for WebAssembly
+
+This is a modified branch of Slic3r that, by using features from the standard library instead of boost, allows compiling libSlic3r to WebAssembly. This is a very experimental process. Making use of the resulting WebAssembly is a small feat in itself.
+
+### Compilation
+
+In the `src/` subdirectory perform the following commands after [activating](https://emscripten.org/docs/getting_started/downloads.html) the emscripten toolset.
+
+```bash
+mkdir build
+cd build
+emcmake cmake -DNO_COMPILED_BOOST=ON "-DCMAKE_CXX_FLAGS=-s USE_BOOST_HEADERS=1" ..
+emmake make -j8
+```
+
+This should result in an out-of-source build of emscripten that results in slic3r.js and slic3r.wasm, but also liblibslic3r.a (as well as other static libraries) which can be linked into other WebAssembly projects. By crafting a decent set of bindings, it may also be possible to make this code usable from Javascript, but I haven't developed this branch that far yet.
+

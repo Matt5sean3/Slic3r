@@ -4,6 +4,11 @@
 
 namespace Slic3r {
 
+#if BOOST_VERSION >= 107300 && ! defined(NO_COMPILED_BOOST)
+using boost::placeholders::_1;
+using boost::placeholders::_2;
+#endif
+
 void
 GCodeTimeEstimator::parse(const std::string &gcode)
 {

@@ -9,11 +9,17 @@
 #include <boost/asio.hpp>
 #include "compat/bind.hpp"
 #include "compat/thread.hpp"
+
 #include <boost/core/noncopyable.hpp>
 
 namespace Slic3r {
 
 namespace asio = boost::asio;
+
+#if BOOST_VERSION >= 107300
+using boost::placeholders::_1;
+using boost::placeholders::_2;
+#endif
 
 class GCodeSender : private boost::noncopyable {
     public:

@@ -15,6 +15,7 @@
 
 #else
 
+#include <boost/version.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/algorithm/string/classification.hpp>
 #include <boost/algorithm/string/erase.hpp>
@@ -24,6 +25,12 @@
 #include <boost/config.hpp>
 #include <boost/foreach.hpp>
 #include <boost/lexical_cast.hpp>
+#ifdef BOOST_NOWIDE_FOUND
+#include <boost/nowide/cstdlib.hpp>
+#else
+#include <boost/nowide/cenv.hpp>
+#endif
+#include <boost/nowide/fstream.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
 
@@ -220,8 +227,7 @@ ConfigOptionDef::ConfigOptionDef(const ConfigOptionDef &other)
 
 ConfigOptionDef::~ConfigOptionDef()
 {
-    if (this->default_value != nullptr)
-        delete this->default_value;
+    delete this->default_value;
 }
 
 std::vector<std::string>
@@ -729,7 +735,7 @@ DynamicConfig::swap(DynamicConfig &other)
 DynamicConfig::~DynamicConfig () {
     for (t_options_map::iterator it = this->options.begin(); it != this->options.end(); ++it) {
         ConfigOption* opt = it->second;
-        if (opt != NULL) delete opt;
+        delete opt;
     }
 }
 

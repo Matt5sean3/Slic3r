@@ -5,7 +5,12 @@
 #if NO_COMPILED_BOOST
     #include <functional>
 #else
-    #include <boost/bind/bind.hpp>
+    #include <boost/version.hpp>
+    #if BOOST_VERSION >= 107300
+        #include <boost/bind/bind.hpp>
+    #else
+        #include <boost/bind.hpp>
+    #endif
 #endif
 
 namespace compat {

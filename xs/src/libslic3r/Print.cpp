@@ -867,8 +867,8 @@ bool Print::has_skirt() const
         || this->has_infinite_skirt();
 }
 
-void
-Print::validate() const
+std::pair< bool, std::string >
+Print::validate_noexcept() const noexcept
 {
     if (this->config.complete_objects) {
         // check horizontal clearance
@@ -912,7 +912,7 @@ Print::validate() const
                     p.translate(*copy);
                     
                     if (!intersection(a, p).empty())
-                        throw InvalidPrintException{"Some objects are too close; your extruder will collide with them."};
+                        return std::pair< bool, std::string >( false, "Some objects are too close; your extruder will collide with them." );
                     
                     a = union_(a, p);
                 }
@@ -931,7 +931,7 @@ Print::validate() const
             // it will be printed as last one so its height doesn't matter
             object_height.pop_back();
             if (!object_height.empty() && object_height.back() > scale_(this->config.extruder_clearance_height.value))
-                throw InvalidPrintException{"Some objects are too tall and cannot be printed without extruder collisions."};
+                return std::pair< bool, std::string >( false, "Some objects are too tall and cannot be printed without extruder collisions." );
         }
     } // end if (this->config.complete_objects)
     
@@ -939,13 +939,24 @@ Print::validate() const
         size_t total_copies_count = 0;
         FOREACH_OBJECT(this, i_object) total_copies_count += (*i_object)->copies().size();
         if (total_copies_count > 1 && !this->config.complete_objects.getBool())
-            throw InvalidPrintException{"The Spiral Vase option can only be used when printing a single object."};
+            return std::pair< bool, std::string >( false, "The Spiral Vase option can only be used when printing a single object." );
         if (this->regions.size() > 1)
-            throw InvalidPrintException{"The Spiral Vase option can only be used when printing single material objects."};
+            return std::pair< bool, std::string >( false, "The Spiral Vase option can only be used when printing single material objects." );
     }
     
     if (this->extruders().empty())
-        throw InvalidPrintException{"The supplied settings will cause an empty print."};
+        return std::pair< bool, std::string >( false, "The supplied settings will cause an empty print." );
+    return std::pair< bool, std::string >( true, "The print is valid." );
+}
+
+void
+Print::validate() const
+{
+    auto result = validate_noexcept( );
+    if( ! result.first )
+    {
+        throw InvalidPrintException( result.second );
+    }
 }
 
 // the bounding box of objects placed in copies position

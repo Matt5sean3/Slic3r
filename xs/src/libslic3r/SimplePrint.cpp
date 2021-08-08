@@ -50,4 +50,26 @@ SimplePrint::export_gcode(std::string outfile) {
     this->_print.status_cb = nullptr;
 }
 
+std::pair< bool, std::string >
+SimplePrint::export_gcode_noexcept(std::string outfile) noexcept {
+    auto result = this->_print.validate_noexcept();
+    if( !result.first )
+    {
+        return result;
+    }
+    this->_print.status_cb = this->status_cb;
+    this->_print.export_gcode(outfile);
+    
+    // check that all parts fit in bed shape, and warn if they don't
+    // TODO: use actual toolpaths instead of total bounding box
+    Polygon bed_polygon{ scale(this->_print.config.bed_shape.values) };
+    if (!diff(this->_print.bounding_box().polygon(), bed_polygon).empty()) {
+        std::cout << "Warning: the supplied parts might not fit in the configured bed shape. "
+            << "You might want to review the result before printing." << std::endl;
+    }
+    
+    this->_print.status_cb = nullptr;
+    return result;
+}
+
 }

@@ -17,6 +17,8 @@ class SimplePrint {
     double total_used_filament() const { return this->_print.total_used_filament; }
     double total_extruded_volume() const { return this->_print.total_extruded_volume; }
     void set_model(const Model &model);
+    // "noexcept" API provides for easier operation under WASM
+    std::pair< bool, std::string > export_gcode_noexcept(std::string outfile) noexcept;
     void export_gcode(std::string outfile);
     const Model& model() const { return this->_model; };
     const Print& print() const { return this->_print; };

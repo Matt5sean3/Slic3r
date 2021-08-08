@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
 project (slic3r)
 
 option(Enable_GUI "Use the wxWidgets code in slic3r.cpp" OFF)
@@ -10,6 +10,7 @@ option(PROFILE "Build with gprof profiling output." OFF)
 option(COVERAGE "Build with gcov code coverage profiling." OFF)
 option(NO_COMPILED_BOOST "Build such that any boost libraries used are header-only" OFF)
 option(SLIC3R_DEBUG "Build with Slic3r's debug output" OFF)
+option(JS_INTERFACE "Compile to WebAssembly with a Javascript interface" OFF)
 
 set(LIBSLIC3R_CXX_STD cxx_std_11)
 # only on newer GCCs: -ftemplate-backtrace-limit=0
@@ -17,6 +18,14 @@ add_compile_options(-ftemplate-backtrace-limit=0)
 add_compile_options(-DNO_PERL -DM_PI=3.14159265358979323846 -DHAS_BOOL -DNOGDI -DBOOST_ASIO_DISABLE_KQUEUE)
 if(SLIC3R_DEBUG)
     add_compile_options(-DSLIC3R_DEBUG)
+endif()
+
+if(JS_INTERFACE)
+    add_compile_options("SHELL:-s USE_BOOST_HEADERS=1")
+    add_link_options("SHELL:-s ALLOW_MEMORY_GROWTH=1")
+    add_compile_options(-O2)
+    add_link_options(-O2)
+    set(NO_COMPILED_BOOST ON)
 endif()
 
 if (MSVC)
@@ -126,6 +135,8 @@ set(GUI_LIBDIR ${CMAKE_CURRENT_SOURCE_DIR}/GUI/)
 
 set(TESTDIR ${CMAKE_CURRENT_SOURCE_DIR}/test)
 set(GUI_TESTDIR ${CMAKE_CURRENT_SOURCE_DIR}/test/GUI/)
+
+set(JS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../js/)
 
 # directory that contains the dependent non-source files, like models and configurations
 set(TESTFILE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/test/inputs/)
@@ -356,8 +367,8 @@ set(SLIC3R_TEST_SOURCES
     ${TESTDIR}/libslic3r/test_amf.cpp
 )
 
-
 add_executable(slic3r slic3r.cpp)
+
 target_compile_features(slic3r PUBLIC cxx_std_14)
 #set_target_properties(slic3r PROPERTIES LINK_SEARCH_START_STATIC 1)
 #set_target_properties(slic3r PROPERTIES LINK_SEARCH_END_STATIC 1)
@@ -605,4 +616,46 @@ if (BUILD_EXTRUDE_TIN)
     target_link_libraries (extrude-tin libslic3r ${LIBSLIC3R_DEPENDS})
 endif()
 
+if (JS_INTERFACE)
+  set(js_binding_include_flags "")
+  foreach(include_dir ${SLIC3R_INCLUDES} ${LIBSLIC3R_INCLUDES})
+    set(js_binding_include_flags ${js_binding_include_flags} -I${include_dir})
+  endforeach()
+
+  set(js_binding_dependencies "")
+  foreach(dependency libslic3r ${LIBSLIC3R_DEPENDS})
+    if(TARGET ${dependency})
+      set(js_binding_dependencies ${js_binding_dependencies} lib${dependency}.a)
+    elseif(EXISTS ${dependency})
+      set(js_binding_dependencies ${js_binding_dependencies} "${dependency}")
+    else()
+      message(ERROR "Cannot handle non-file, non-target dependencies!")
+    endif()
+  endforeach()
+
+  message(STATUS "include flags: ${js_binding_include_flags}")
+  message(STATUS "dependencies:  ${js_binding_dependencies}")
+
+  # Interface side, mostly Javascript, tightly coupled to an HTML page
+  add_executable(slicerjs
+    "${JS_DIR}/browser/main.cpp"
+    "${JS_DIR}/browser/SliceOperation.cpp"
+    "${JS_DIR}/browser/ListSettingsOperation.cpp"
+    )
+  target_compile_features(slicerjs PUBLIC ${LIBSLIC3R_CXX_STD})
+  target_link_options(slicerjs BEFORE PUBLIC --js-library "${JS_DIR}/browser/interface.js")
+  set_target_properties(slicerjs PROPERTIES LINK_DEPENDS "${JS_DIR}/browser/interface.js")
+
+  # Computational side, mostly C++, coupled to interface through message passing
+  add_executable(slicerjs_worker
+    "${JS_DIR}/worker/utils.cpp"
+    "${JS_DIR}/worker/commands.cpp"
+    )
+  target_compile_features(slicerjs_worker PUBLIC ${LIBSLIC3R_CXX_STD})
+  target_include_directories(slicerjs_worker PUBLIC ${SLIC3R_INCLUDES} ${LIBSLIC3R_INCLUDES})
+  target_link_libraries(slicerjs_worker PUBLIC workerfs.js libslic3r ${LIBSLIC3R_DEPENDS})
+  target_link_options(slicerjs_worker BEFORE PUBLIC -s BUILD_AS_WORKER=1)
+  target_link_options(slicerjs_worker BEFORE PUBLIC --js-library "${JS_DIR}/worker/utils.js")
+  set_target_properties(slicerjs_worker PROPERTIES LINK_DEPENDS "${JS_DIR}/worker/utils.js")
+endif()
 

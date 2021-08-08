@@ -287,6 +287,8 @@ class Print
     bool apply_config(DynamicPrintConfig config);
     bool has_infinite_skirt() const;
     bool has_skirt() const;
+    // Returns a pair, with first true if valid, and a validation message
+    std::pair< bool, std::string > validate_noexcept() const noexcept;
     // Throws exceptions if print is not valid.
     void validate() const;
     BoundingBox bounding_box() const;

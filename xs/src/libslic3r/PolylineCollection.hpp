@@ -11,10 +11,8 @@ class PolylineCollection
     static Polylines _chained_path_from(
         const Polylines &src,
         Point start_near,
-        bool no_reverse
-#if SLIC3R_CPPVER >= 11
-        , bool move_from_src
-#endif
+        bool no_reverse,
+        bool move_from_src
     );
 
 public:
@@ -28,12 +26,10 @@ public:
     void append(const Polylines &polylines);
 
 	static Point     leftmost_point(const Polylines &polylines);
-#if SLIC3R_CPPVER >= 11
 	static Polylines chained_path(Polylines &&src, bool no_reverse = false);
 	static Polylines chained_path_from(Polylines &&src, Point start_near, bool no_reverse = false);
-#endif
-    static Polylines chained_path(const Polylines &src, bool no_reverse = false);
-    static Polylines chained_path_from(const Polylines &src, Point start_near, bool no_reverse = false);
+  static Polylines chained_path(const Polylines &src, bool no_reverse = false);
+  static Polylines chained_path_from(const Polylines &src, Point start_near, bool no_reverse = false);
 };
 
 }

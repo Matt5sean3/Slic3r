@@ -1,7 +1,7 @@
 #include "PrintConfig.hpp"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/lexical_cast.hpp>
-#include "compat/thread.hpp"
+#include <thread>
 
 namespace Slic3r {
 
@@ -1632,7 +1632,7 @@ PrintConfigDef::PrintConfigDef()
     def->cli = "threads=i";
     def->min = 1;
     {
-        unsigned int threads = compat::thread::hardware_concurrency();
+        unsigned int threads = std::thread::hardware_concurrency();
         def->default_value = new ConfigOptionInt(threads > 0 ? threads : 2);
     }
     

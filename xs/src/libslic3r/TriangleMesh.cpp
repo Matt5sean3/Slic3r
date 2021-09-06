@@ -969,11 +969,11 @@ TriangleMeshSlicer<A>::slice(const std::vector<float> &z, std::vector<Polygons>*
     
     std::vector<IntersectionLines> lines(z.size());
     {
-        boost::mutex lines_mutex;
-        parallelize<int>(
+        std::mutex lines_mutex;
+        parallelize<size_t>(
             0,
             this->mesh->stl.stats.number_of_facets-1,
-            boost::bind(&TriangleMeshSlicer<A>::_slice_do, this, boost::placeholders::_1, &lines, &lines_mutex, z)
+            std::bind(&TriangleMeshSlicer<A>::_slice_do, this, std::placeholders::_1, &lines, &lines_mutex, z)
         );
     }
     
@@ -984,13 +984,13 @@ TriangleMeshSlicer<A>::slice(const std::vector<float> &z, std::vector<Polygons>*
     parallelize<size_t>(
         0,
         lines.size()-1,
-        boost::bind(&TriangleMeshSlicer<A>::_make_loops_do, this, boost::placeholders::_1, &lines, layers)
+        std::bind(&TriangleMeshSlicer<A>::_make_loops_do, this, std::placeholders::_1, &lines, layers)
     );
 }
 
 template <Axis A>
 void
-TriangleMeshSlicer<A>::_slice_do(size_t facet_idx, std::vector<IntersectionLines>* lines, boost::mutex* lines_mutex, 
+TriangleMeshSlicer<A>::_slice_do(size_t facet_idx, std::vector<IntersectionLines>* lines, std::mutex* lines_mutex, 
     const std::vector<float> &z) const
 {
     const stl_facet &facet = this->mesh->stl.facet_start[facet_idx];
@@ -1054,7 +1054,7 @@ template <Axis A>
 void
 TriangleMeshSlicer<A>::slice_facet(float slice_z, const stl_facet &facet, const int &facet_idx,
     const float &min_z, const float &max_z, std::vector<IntersectionLine>* lines,
-    boost::mutex* lines_mutex) const
+    std::mutex* lines_mutex) const
 {
     std::vector<IntersectionPoint> points;
     std::vector< std::vector<IntersectionPoint>::size_type > points_on_layer;
@@ -1107,7 +1107,7 @@ TriangleMeshSlicer<A>::slice_facet(float slice_z, const stl_facet &facet, const 
             line.a_id   = a_id;
             line.b_id   = b_id;
             if (lines_mutex != NULL) {
-                boost::lock_guard<boost::mutex> l(*lines_mutex);
+                std::lock_guard<std::mutex> l(*lines_mutex);
                 lines->push_back(line);
             } else {
                 lines->push_back(line);
@@ -1165,7 +1165,7 @@ TriangleMeshSlicer<A>::slice_facet(float slice_z, const stl_facet &facet, const 
         line.edge_a_id  = points[1].edge_id;
         line.edge_b_id  = points[0].edge_id;
         if (lines_mutex != NULL) {
-            boost::lock_guard<boost::mutex> l(*lines_mutex);
+            std::lock_guard<std::mutex> l(*lines_mutex);
             lines->push_back(line);
         } else {
             lines->push_back(line);

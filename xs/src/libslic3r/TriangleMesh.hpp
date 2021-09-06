@@ -211,7 +211,7 @@ class TriangleMeshSlicer
     void slice(float z, ExPolygons* slices) const;
     void slice_facet(float slice_z, const stl_facet &facet, const int &facet_idx,
         const float &min_z, const float &max_z, std::vector<IntersectionLine>* lines,
-        boost::mutex* lines_mutex = NULL) const;
+        std::mutex* lines_mutex = NULL) const;
     
 	/// \brief Splits the current mesh into two parts.
 	/// \param[in] z Coordinate plane to cut along.
@@ -223,7 +223,7 @@ class TriangleMeshSlicer
     typedef std::vector< std::vector<int> > t_facets_edges;
     t_facets_edges facets_edges;
     stl_vertex* v_scaled_shared;
-    void _slice_do(size_t facet_idx, std::vector<IntersectionLines>* lines, boost::mutex* lines_mutex, const std::vector<float> &z) const;
+    void _slice_do(size_t facet_idx, std::vector<IntersectionLines>* lines, std::mutex* lines_mutex, const std::vector<float> &z) const;
     void _make_loops_do(size_t i, std::vector<IntersectionLines>* lines, std::vector<Polygons>* layers) const;
     void make_loops(std::vector<IntersectionLine> &lines, Polygons* loops) const;
     void make_expolygons(const Polygons &loops, ExPolygons* slices) const;

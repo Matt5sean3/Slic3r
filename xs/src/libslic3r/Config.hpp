@@ -90,6 +90,8 @@ public:
     /// Method to validate the different configuration options. 
     /// It will throw InvalidOptionException exceptions on failure.
     void validate() { this->_config.validate(); };
+    // Similar, but returns false and provides the error message on failure.
+    std::pair< bool, std::string > validate_noexcept() const noexcept { return this->_config.validate_noexcept( ); };
 
     const DynamicPrintConfig& config() const { return _config; }
     bool empty() const { return _config.empty(); }

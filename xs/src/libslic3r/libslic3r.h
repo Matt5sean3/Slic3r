@@ -11,14 +11,17 @@
 #endif
 
 #include <math.h>
+#include <functional>
 #include <queue>
 #include <sstream>
+#include <thread>
 #include <vector>
 #include <cstdint>
 
-#include "compat/thread.hpp"
-#include "compat/bind.hpp"
 #include "compat/function.hpp"
+#include "ThreadPool.hpp"
+
+#include <emscripten/html5.h>
 
 #ifdef _MSC_VER
 #include <limits>
@@ -117,43 +120,28 @@ inline void append_to(std::vector<T> &dst, const std::vector<T> &src)
 }
 
 template <class T> void
-_parallelize_do(std::queue<T>* queue, compat::mutex* queue_mutex, compat::function<void(T)> func)
+parallelize(std::queue<T> queue, std::function<void(T)> func )
 {
-    //std::cout << "THREAD STARTED: " << compat::this_thread::get_id() << std::endl;
-    while (true) {
-        T i;
-        {
-            compat::lock_guard<compat::mutex> l(*queue_mutex);
-            if (queue->empty()) return;
-            i = queue->front();
-            queue->pop();
-        }
-        //std::cout << "  Thread " << compat::this_thread::get_id() << " processing item " << i << std::endl;
-        func(i);
-        compat::this_thread::interruption_point();
+    // Just add tasks to the existing global ThreadPool
+    std::vector< ThreadPool::TaskHandle > tasks;
+    while( ! queue.empty( ) )
+    {
+        tasks.push_back(
+            ThreadPool::global( ).enqueue(
+                std::bind( func, queue.front( ) ) ) );
+        queue.pop( );
     }
+    emscripten_console_log( "After add tasks" );
+    ThreadPool::global( ).wait( tasks.begin( ), tasks.end( ) );
+    emscripten_console_log( "After waiting for tasks" );
 }
 
 template <class T> void
-parallelize(std::queue<T> queue, compat::function<void(T)> func,
-    int threads_count = compat::thread::hardware_concurrency())
-{
-    if (threads_count == 0) threads_count = 2;
-    compat::mutex queue_mutex;
-
-    compat::thread_group workers;
-    for (int i = 0; i < std::min(threads_count, (int)queue.size()); i++)
-        workers.add_thread(new compat::thread(&_parallelize_do<T>, &queue, &queue_mutex, func));
-    workers.join_all();
-}
-
-template <class T> void
-parallelize(T start, T end, compat::function<void(T)> func,
-    int threads_count = compat::thread::hardware_concurrency())
+parallelize(T start, T end, std::function<void(T)> func )
 {
     std::queue<T> queue;
     for (T i = start; i <= end; ++i) queue.push(i);
-    parallelize(queue, func, threads_count);
+    parallelize( queue, func );
 }
 
 } // namespace Slic3r

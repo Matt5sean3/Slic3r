@@ -21,6 +21,7 @@ class Polygon : public MultiPoint {
     const Point& operator[](Points::size_type idx) const;
     
     Polygon() {};
+    virtual ~Polygon( ) { };
 
     explicit Polygon(const Points &points): MultiPoint(points) {};
     Point last_point() const;

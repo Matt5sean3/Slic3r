@@ -32,13 +32,13 @@ extern bool unescape_strings_cstyle(const std::string &str, std::vector<std::str
 class ConfigOptionException : public std::exception {
     public:
     const t_config_option_key opt_key;
+    std::string message;
     ConfigOptionException(const t_config_option_key _opt_key)
-        : opt_key(_opt_key) {};
+        : opt_key(_opt_key),
+          message( "Exception with the option: " + _opt_key ) {};
 
     virtual const char* what() const noexcept {
-        std::string s("Exception with the option: ");
-        s += this->opt_key;
-        return s.c_str();
+        return message.c_str( );
     }
 };
 
@@ -48,13 +48,11 @@ class UnknownOptionException : public ConfigOptionException {
 };
 
 class InvalidOptionException : public ConfigOptionException {
-    using ConfigOptionException::ConfigOptionException;
-    
     public:
-    virtual const char* what() const noexcept {
-        std::string s("Invalid value for option: ");
-        s += this->opt_key;
-        return s.c_str();
+    InvalidOptionException( const t_config_option_key _opt_key ) :
+      ConfigOptionException( _opt_key )
+    {
+        message = "Invalid value for option: " + _opt_key;
     }
 };
 
@@ -826,6 +824,7 @@ class ConfigBase
     void load(const std::string &file);
     void save(const std::string &file) const;
     void validate() const;
+    std::pair< bool, std::string > validate_noexcept() const noexcept;
 };
 
 /// Configuration store with dynamic number of configuration values.

@@ -18,6 +18,7 @@ typedef std::vector<ThickPolyline> ThickPolylines;
 
 class Polyline : public MultiPoint {
     public:
+    virtual ~Polyline( ) { };
     operator Polylines() const;
     operator Line() const;
     Point last_point() const;

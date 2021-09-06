@@ -2,6 +2,8 @@
 #ifndef ModSlicer_API_H_
 #define ModSlicer_API_H_
 
+// This creates an API of byte layouts that should be implementable in varying languages
+
 #include <emscripten/emscripten.h>
 #include "Structured.h"
 
@@ -10,6 +12,23 @@ namespace ModSlicer
   // General messages
   typedef Structured::Message< std::string > Error;
   typedef Structured::Message< std::string > Progress;
+
+  // === Initialize ===
+  // Sets the number of threads
+  typedef Structured::Message< > InitializationSuccess;
+  typedef Structured::Message< int > InitializationRequest;
+
+  enum class InitializationResponseMessage
+  {
+    ERROR,
+    SUCCESS
+  };
+
+  typedef Structured::NamedMessageProtocol<
+    Structured::Protocol<
+      Error,
+      InitializationSuccess >,
+    InitializationResponseMessage > InitializationResponseProtocol;
 
   // === Slice ===
   typedef Structured::Message< std::string, std::string > SliceSuccess;
@@ -37,12 +56,6 @@ namespace ModSlicer
   // Define the settings listing protocol
   typedef Structured::Message< > ListSettingsRequest;
 
-  enum class ListSettingsResponseMessage
-  {
-    ERROR,
-    SUCCESS
-  };
-
   enum class SettingType
   { // For now, corresponds one-to-one to ConfigOptionType in Slic3r
     NONE,
@@ -66,6 +79,12 @@ namespace ModSlicer
     std::vector< std::string > // Just a list of all the names of the settings
       > ListSettingsSuccess;
 
+  enum class ListSettingsResponseMessage
+  {
+    ERROR,
+    SUCCESS
+  };
+
   typedef Structured::NamedMessageProtocol<
     Structured::Protocol<
       Error,
@@ -77,6 +96,7 @@ namespace ModSlicer
 
   enum class RequestMessage
   {
+    INITIALIZE,
     SLICE,
     LIST_SETTINGS,
     UNKNOWN
@@ -84,9 +104,11 @@ namespace ModSlicer
 
   typedef Structured::NamedMessageProtocol<
     Structured::Protocol<
+      InitializationRequest,
       SliceRequest,
       ListSettingsRequest >,
     RequestMessage > RequestProtocol;
+
 } // ModSlicer
 
 

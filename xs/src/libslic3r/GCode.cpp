@@ -571,7 +571,7 @@ GCode::_extrude(ExtrusionPath path, std::string description, double speed)
     std::string comment = ";_EXTRUDE_SET_SPEED";
     if (path.role == erExternalPerimeter) comment += ";_EXTERNAL_PERIMETER";
     gcode += this->writer.set_speed(F, "", this->enable_cooling_markers ? comment : "");
-    Pointf start;
+    // Pointf start;
     double path_length = 0;
     {
         std::string comment = this->config.gcode_comments ? description : "";

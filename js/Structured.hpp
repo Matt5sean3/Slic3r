@@ -1,29 +1,63 @@
 #ifndef STRUCTURED_H_
 #define STRUCTURED_H_
 
+// Flattening things into a working API isn't as important now that I know the threads API is in good shape
+// Don't really want to do this if I don't need to.
+
 #include <string>
 #include <vector>
 #include <map>
 #include <functional>
+#include <type_traits>
+
+#include "layout.hpp"
 
 namespace Structured
 {
-  // The goal is to create a method for encoding data at compile-time, but this
-  // all really needs to interface with JS too. If I limit encoding to a small
-  // set of possibilities I could probably allow exporting the format such that
-  // JS could dynamically build matching structures.
+  // The magic for structured really only needs to address parts that can't fit into a standard layout
+  // Things that are "trivially copyable" just need layout information transmitted to javascript
+
+  // The trick is then to handle data that cannot fit that paradigm, such as vectors and strings
+  // However, these can just be treated as arrays of "trivially copyable" data without great difficulty.
+
+  // The trick is then using a special allocator to handle other types
+  template< class StaticType, class... DynamicTypes >
+  struct DynamicData
+  {
+    static_assert( std::is_standard_layout_v< StaticType > );
+
+    std::vector< char > buffer;
+    std::tuple< DynamicTypes... > dynamic;
+    StaticType & flat;
+
+    DynamicData( ) :
+      buffer( sizeof( StaticType ) ),
+      dynamic( ),
+      flat( *reinterpret_cast< StaticType * >( buffer.data( ) ) )
+    {
+    }
+
+    const char * data( )
+    {
+    }
+
+    void format_dynamic( )
+    {
+    }
+
+  };
 
   // === Field ===
   // For very basic types
   template< class Type >
   struct Field
   {
-    typedef Type FieldType;
-
     // Is the size known at compile time?
     static constexpr bool has_static_size = true;
     static constexpr size_t static_size = sizeof( Type );
   
+    typedef Type FieldType;
+
     static size_t size( const char * buffer )
     {
       return sizeof( Type );
@@ -40,6 +74,12 @@ namespace Structured
       buffer.insert( buffer.end( ), field_data, field_data + sizeof( Type ) );
     }
   };
+
+  template< class T >
+  void encode( std::vector< char > & buffer, const T & field )
+  {
+    Field< T >::encode( buffer, field );
+  }
   
   // Specialization for strings
   template<
@@ -48,6 +88,8 @@ namespace Structured
       class Alloc >
   struct Field< std::basic_string< charT, traits, Alloc > >
   {
+    static constexpr bool has_static_size = false;
+
     typedef std::basic_string< charT, traits, Alloc > FieldType;
   
     static size_t size( const char * buffer )
@@ -89,6 +131,8 @@ namespace Structured
       class Allocator /* = std::allocator< Type > */ >
   struct Field< std::vector< Type, Allocator > >
   {
+    static constexpr bool has_static_size = false;
+
     typedef std::vector< Type, Allocator > FieldType;
     static size_t size( const char * buffer )
     {
@@ -127,7 +171,9 @@ namespace Structured
       class T2 >
   struct Field< std::pair< T1, T2 > >
   {
+    static constexpr bool has_static_size = Field< std::tuple< T1, T2 > >::has_static_size;
     typedef std::pair< T1, T2 > FieldType;
+
     static size_t size( const char * buffer )
     {
       return *reinterpret_cast< const size_t * >( buffer );
@@ -158,6 +204,8 @@ namespace Structured
       class Allocator /* = std::allocator< std::pair< const Key, Value > > */ >
   struct Field< std::map< Key, Value, Compare, Allocator > >
   {
+    static constexpr bool has_static_size = false;
+
     typedef std::map< Key, Value, Compare, Allocator > FieldType;
     static size_t size( const char * buffer )
     {
@@ -207,239 +255,128 @@ namespace Structured
   {
     typedef Node type;
   };
-  
-  // === Message ===
-  template< class... FieldTypes >
-  struct Message
-  {
-    template< class R >
-    struct HandlerType
-    {
-      typedef std::function< R( ) > type;
-    };
 
-    Message( )
+
+  // Static tuple layout is some complex meta-programming
+/*
+  template< class... Members >
+  struct StaticTupleLayout
+  {
+    // Filter members into byte sizes, 1, 2, 4, 8
+    // small size, close packed
+    filter_by_static_size_t< 0, 1, Members... > packed;
+    // 2-aligned
+    filter_by_static_size_t< 1, 2, Members... > two_aligned;
+    // 4-aligned
+    filter_by_static_size_t< 2, 4, Members... > four_aligned;
+    // 8-aligned
+    filter_by_static_size_t< 4, 65535, Members... > eight_aligned;
+
+    static void encode( std::vector< char > & buffer, const FieldType & field )
+    {
+      inner_encode< 0 >( buffer, field );
+    }
+
+  private:
+    template< size_t Alignment, class TypeList >
+    static void encode_aligned( )
     {
     }
-  
-    static Message decode( const char * buffer )
+
+    template< size_t I >
+    static void inner_encode( std::vector< char > & buffer, const FieldType & field )
     {
-      return Message( );
+      Field< decltype( std::get< I >( field ) ) >::encode( buffer, std::get< I >( field ) );
+      inner_encode< I + 1 >( buffer, field );
     }
-  
+
+    template<>
+    static void inner_encode< sizeof...( Members ) >( std::vector< char > & buffer, const FieldType & field )
+    {
+    }
+  };
+
+  // Dynamic layout needs to be handled at runtime
+  template< class... Members >
+  struct DynamicTupleLayout
+  {
+  };
+
+  // Tuples can be static or dynamic
+  template< class... Members >
+  struct TupleFieldStaticSize :
+    StaticTupleLayout< Members... >
+  {
+    static constexpr bool has_static_size = true;
+  };
+
+  template< class... Members >
+  struct TupleFieldDynamicSize :
+    // Filter out the static fields to layout separately
+    apply_template_to_type_list_t<
+      StaticTupleLayout,
+      typename filter_by_has_static_size< Members... >::type
+    >
+  {
+    static constexpr bool has_static_size = false;
+  };
+  */
+
+  // === std::tuple ===
+  template< class... Members >
+  struct Field< std::tuple< Members... > >
+  {
+    typedef std::tuple< Members... > FieldType;
+
+    static size_t size( const char * buffer )
+    {
+      auto base_size = Field< typename FieldType::Member >::size( buffer );
+      return base_size + Field< typename FieldType::Parent >::size( buffer + base_size );
+    }
+
+    static FieldType decode( const char * buffer )
+    {
+      return FieldType(
+        Field< typename FieldType::Member >::decode( buffer ),
+        Field< typename FieldType::Parent >::decode( buffer + Field< typename FieldType::Member >::size( buffer ) ) );
+    }
+
+    static void encode( std::vector< char > & buffer, const FieldType & field )
+    {
+      inner_encode< 0 >( buffer, field );
+    }
+
+  private:
+    template< size_t I >
+    static void inner_encode( std::vector< char > & buffer, const FieldType & field )
+    {
+      Field< decltype( std::get< I >( field ) ) >::encode( buffer, std::get< I >( field ) );
+      inner_encode< I + 1 >( buffer, field );
+    }
+
+    template<>
+    static void inner_encode< sizeof...( Members ) >( std::vector< char > & buffer, const FieldType & field )
+    {
+    }
+  };
+
+  template<>
+  struct Field< std::tuple<> >
+  {
+    typedef std::tuple< > FieldType;
+
     static size_t size( const char * buffer )
     {
       return 0;
     }
-  
-    void encode( std::vector< char > & buffer ) const
+
+    static FieldType decode( const char * buffer )
     {
+      return FieldType( );
     }
 
-    template< class R >
-    R use( std::function< R( ) > cb )
+    static void encode( std::vector< char > & buffer, const FieldType & field )
     {
-      cb( );
-    }
-
-  protected:
-    template< class R, class... D >
-    R inner_use( std::function< R( D... ) > cb, D... args )
-    {
-      return cb( args... );
-    }
-  };
-  
-
-  template< class FieldType, class... FieldTypes >
-  struct Message< FieldType, FieldTypes... > :
-    public Message< FieldTypes... >
-  {
-  public:
-    typedef FieldType ContainedType;
-    typedef Message< FieldType, FieldTypes... > Self;
-    typedef Message< FieldTypes... > Parent;
-
-    template< int Generations >
-    struct Ancestor
-    {
-      typedef typename NodeAncestor< Self, Generations >::type type;
-    };
-
-    // copy constructor
-    Message( const Message & original ) :
-      Parent( original ),
-      field_( original.field_ )
-    {
-    }
-  
-    // from-fields constructor
-    Message( FieldType field, FieldTypes... fields ) :
-      Parent( fields... ),
-      field_( field )
-    {
-    }
-  
-  private:
-    Message( FieldType field, Parent base ) :
-      Parent( base ),
-      field_( field )
-    {
-    }
-
-  protected:
-    FieldType field_;
-  
-  public:
-    static Message decode( const char * buffer )
-    {
-      return Message(
-          Field< FieldType >::decode( buffer ),
-          Parent::decode( buffer + Field< FieldType >::size( buffer ) ) );
-    }
-  
-    static size_t size( const char * buffer )
-    {
-      size_t field_size = Field< FieldType >::size( buffer );
-      return field_size + Parent::size( buffer + field_size );
-    }
-  
-    void encode( std::vector< char > & buffer ) const
-    {
-      Field< FieldType >::encode( buffer, field_ );
-      Parent::encode( buffer );
-    }
-
-    template< int Generations >
-    typename Ancestor< Generations >::type::ContainedType
-    get( )
-    {
-      return Ancestor< Generations >::type::field_;
-    }
-
-    template< class R >
-    struct HandlerType
-    {
-      typedef std::function< R( FieldType, FieldTypes... ) > type;
-    };
-
-    template< class R >
-    R use( typename HandlerType< R >::type cb )
-    {
-      return inner_use< R >( cb );
-    }
-  protected:
-    template< class R, class... D >
-    R inner_use( std::function< R( D..., FieldType, FieldTypes... ) > cb, D... args )
-    {
-      return Parent::template inner_use< R, D..., decltype( field_ ) >( cb, args..., field_ );
-    }
-  };
-
-  template< class... MessageTypes >
-  class Protocol
-  {
-  public:
-    typedef std::function< void( const char * ) > HandlerType;
-  protected:
-    constexpr static size_t message_type_id = 0;
-    std::vector< std::function< void( const char * ) > > decoders;
-    HandlerType handler;
-
-    void decode( const char * buffer )
-    {
-      // Call a default handler
-      handler( buffer );
-    }
-
-    static void encode( )
-    {
-    }
-  };
-
-  template< class MessageType, class... MessageTypes >
-  class Protocol< MessageType, MessageTypes... > :
-    public Protocol< MessageTypes... >
-  {
-  public:
-    typedef Protocol< MessageType, MessageTypes... > Self;
-    typedef Protocol< MessageTypes... > Parent;
-    typedef MessageType Message;
-    typedef typename MessageType::template HandlerType< void >::type HandlerType;
-
-    template< int Generations >
-    struct Ancestor
-    {
-      typedef typename NodeAncestor< Self, Generations >::type type;
-    };
-
-    constexpr static size_t message_type_id = Protocol< MessageTypes... >::message_type_id + 1;
-  protected:
-    HandlerType handler;
-  public:
-
-    template< int Generations >
-    static void encode(
-        std::vector< char > & buffer,
-        const typename Ancestor< Generations >::type::Message & message )
-    {
-      Field< size_t >::encode(
-          buffer,
-          Ancestor< Generations >::type::message_type_id );
-      message.encode( buffer );
-    }
-
-    void decode( const char * buffer )
-    {
-
-      auto id = Field< size_t >::decode( buffer );
-      if( id == message_type_id )
-      {
-        MessageType::decode(
-              buffer +
-              Field< size_t >::size( buffer ) ).template use< void >( handler );
-      }
-      else
-      {
-        Parent::decode( buffer );
-      }
-    }
-
-    template< int Generations >
-    void handle( typename Ancestor< Generations >::type::HandlerType newHandler )
-    {
-      Ancestor< Generations >::type::handler = newHandler;
-    }
-
-  };
-
-  template< class BaseProtocol, class Enumeration >
-  class NamedMessageProtocol :
-    public BaseProtocol
-  {
-  private:
-    BaseProtocol bp_;
-  public:
-    typedef Enumeration MessageSelector;
-
-    template< Enumeration Message >
-    struct SelectAncestor
-    {
-      typedef typename BaseProtocol::template Ancestor< static_cast< size_t >( Message ) >::type type;
-    };
-
-    template< Enumeration Message >
-    static void encode(
-        std::vector< char > & buffer,
-        const typename SelectAncestor< Message >::type::Message & message )
-    {
-      BaseProtocol::template encode< static_cast< size_t >( Message ) >( buffer, message );
-    }
-
-    template< Enumeration Message >
-    void handle( typename BaseProtocol::template Ancestor< static_cast< size_t>( Message ) >::type::HandlerType newHandler )
-    {
-      BaseProtocol::template handle< static_cast< size_t >( Message ) >( newHandler );
     }
   };
 

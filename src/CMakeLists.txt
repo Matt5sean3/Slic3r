@@ -22,7 +22,11 @@ endif()
 
 if(JS_INTERFACE)
     add_compile_options("SHELL:-s USE_BOOST_HEADERS=1")
+    add_compile_options("-pthread")
     add_link_options("SHELL:-s ALLOW_MEMORY_GROWTH=1")
+    add_link_options("SHELL:-s ASSERTIONS=1")
+    add_link_options("SHELL:-s PTHREAD_POOL_SIZE=4")
+    add_link_options("-pthread")
     add_compile_options(-O2)
     add_link_options(-O2)
     set(NO_COMPILED_BOOST ON)
@@ -149,8 +153,6 @@ if(NO_COMPILED_BOOST)
   add_compile_options(-DNO_COMPILED_BOOST)
   # Need to compile using C++17, which has the filesystem STL header
   set(LIBSLIC3R_CXX_STD cxx_std_17)
-  set(COMPAT_SRC
-    ${LIBDIR}/libslic3r/compat/thread.cpp )
 else(NO_COMPILED_BOOST)
   set(Boost_NO_BOOST_CMAKE ON)
   find_package(Boost REQUIRED COMPONENTS system thread filesystem)
@@ -262,12 +264,12 @@ add_library(libslic3r STATIC
     ${LIBDIR}/libslic3r/Surface.cpp
     ${LIBDIR}/libslic3r/SurfaceCollection.cpp
     ${LIBDIR}/libslic3r/SVG.cpp
+    ${LIBDIR}/libslic3r/ThreadPool.cpp
     ${LIBDIR}/libslic3r/TriangleMesh.cpp
     ${LIBDIR}/libslic3r/TransformationMatrix.cpp
     ${LIBDIR}/libslic3r/SupportMaterial.cpp
     ${LIBDIR}/libslic3r/utils.cpp
     ${LIBDIR}/libslic3r/miniz_extension.cpp
-    ${COMPAT_SRC}
 )
 target_compile_features(libslic3r PUBLIC ${LIBSLIC3R_CXX_STD})
 target_include_directories(libslic3r SYSTEM PUBLIC ${SLIC3R_INCLUDES})
@@ -638,24 +640,18 @@ if (JS_INTERFACE)
 
   # Interface side, mostly Javascript, tightly coupled to an HTML page
   add_executable(slicerjs
-    "${JS_DIR}/browser/main.cpp"
-    "${JS_DIR}/browser/SliceOperation.cpp"
-    "${JS_DIR}/browser/ListSettingsOperation.cpp"
+    "${JS_DIR}/main.cpp"
+    "${JS_DIR}/BrowserThreadQueue.cpp"
+    "${JS_DIR}/GenerateSettingsPage.cpp"
+    "${JS_DIR}/SliceOperation.cpp"
+    "${JS_DIR}/interface.cpp"
     )
   target_compile_features(slicerjs PUBLIC ${LIBSLIC3R_CXX_STD})
-  target_link_options(slicerjs BEFORE PUBLIC --js-library "${JS_DIR}/browser/interface.js")
-  set_target_properties(slicerjs PROPERTIES LINK_DEPENDS "${JS_DIR}/browser/interface.js")
+  target_include_directories(slicerjs PUBLIC ${SLIC3R_INCLUDES} ${LIBSLIC3R_INCLUDES})
+  target_link_libraries(slicerjs PUBLIC workerfs.js libslic3r ${LIBSLIC3R_DEPENDS})
 
-  # Computational side, mostly C++, coupled to interface through message passing
-  add_executable(slicerjs_worker
-    "${JS_DIR}/worker/utils.cpp"
-    "${JS_DIR}/worker/commands.cpp"
-    )
-  target_compile_features(slicerjs_worker PUBLIC ${LIBSLIC3R_CXX_STD})
-  target_include_directories(slicerjs_worker PUBLIC ${SLIC3R_INCLUDES} ${LIBSLIC3R_INCLUDES})
-  target_link_libraries(slicerjs_worker PUBLIC workerfs.js libslic3r ${LIBSLIC3R_DEPENDS})
-  target_link_options(slicerjs_worker BEFORE PUBLIC -s BUILD_AS_WORKER=1)
-  target_link_options(slicerjs_worker BEFORE PUBLIC --js-library "${JS_DIR}/worker/utils.js")
-  set_target_properties(slicerjs_worker PROPERTIES LINK_DEPENDS "${JS_DIR}/worker/utils.js")
+  target_link_options(slicerjs BEFORE PUBLIC --js-library "${JS_DIR}/interface.js")
+  set_target_properties(slicerjs PROPERTIES LINK_DEPENDS "${JS_DIR}/interface.js")
+
 endif()
 

@@ -719,6 +719,40 @@ ConfigBase::validate() const
     }
 }
 
+std::pair< bool, std::string >
+ConfigBase::validate_noexcept() const noexcept
+{
+    for (auto &opt_key : this->keys()) {
+        // get option definition
+        assert(this->def->has(opt_key));
+        const ConfigOptionDef& def = this->def->get(opt_key);
+        
+        if (def.type == coInt) {
+            auto &value = this->opt<ConfigOptionInt>(opt_key)->value;
+            if (value < def.min || value > def.max)
+                return std::pair< bool, std::string >( false, opt_key );
+        } else if (def.type == coFloat) {
+            auto &value = this->opt<ConfigOptionFloat>(opt_key)->value;
+            if (value < def.min || value > def.max)
+                return std::pair< bool, std::string >( false, opt_key );
+        } else if (def.type == coFloatOrPercent) {
+            const auto* opt = this->opt<ConfigOptionFloatOrPercent>(opt_key);
+            auto &value = opt->value;
+            if (!opt->percent && (value < def.min || value > def.max))
+                return std::pair< bool, std::string >( false, opt_key );
+        } else if (def.type == coInts) {
+            for (auto &value : this->opt<ConfigOptionInts>(opt_key)->values)
+                if (value < def.min || value > def.max)
+                    return std::pair< bool, std::string >( false, opt_key );
+        } else if (def.type == coFloats) {
+            for (auto &value : this->opt<ConfigOptionFloats>(opt_key)->values)
+                if (value < def.min || value > def.max)
+                    return std::pair< bool, std::string >( false, opt_key );
+        }
+    }
+    return std::pair< bool, std::string >( true, "" );
+}
+
 DynamicConfig& DynamicConfig::operator= (DynamicConfig other)
 {
     this->swap(other);

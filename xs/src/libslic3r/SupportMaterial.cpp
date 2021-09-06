@@ -58,8 +58,7 @@ SupportMaterial::generate_toolpaths(PrintObject *object,
     parallelize<size_t>(
         0,
         object->support_layers.size() - 1,
-        boost::bind(&SupportMaterial::process_layer, this, boost::placeholders::_1, params),
-        this->config->threads.value
+        boost::bind(&SupportMaterial::process_layer, this, boost::placeholders::_1, params)
     );
 }
 
@@ -1191,9 +1190,7 @@ SupportMaterial::p(SurfacesPtr &surfaces)
 void
 SupportMaterial::append_polygons(Polygons &dst, Polygons &src)
 {
-    for (const auto polygon : src) {
-        dst.push_back(polygon);
-    }
+    dst.insert( dst.end( ), src.begin( ), src.end( ) );
 }
 
 vector<coordf_t>

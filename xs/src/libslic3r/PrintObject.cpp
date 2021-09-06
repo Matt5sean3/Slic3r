@@ -354,8 +354,7 @@ PrintObject::detect_surfaces_type()
     
     parallelize<Layer*>(
         std::queue<Layer*>(std::deque<Layer*>(this->layers.begin(), this->layers.end())),  // cast LayerPtrs to std::queue<Layer*>
-        boost::bind(&Slic3r::Layer::detect_surfaces_type, boost::placeholders::_1),
-        this->_print->config.threads.value
+        boost::bind(&Slic3r::Layer::detect_surfaces_type, boost::placeholders::_1)
     );
     
     this->typed_slices = true;
@@ -367,8 +366,7 @@ PrintObject::process_external_surfaces()
 {
     parallelize<Layer*>(
         std::queue<Layer*>(std::deque<Layer*>(this->layers.begin(), this->layers.end())),  // cast LayerPtrs to std::queue<Layer*>
-        boost::bind(&Slic3r::Layer::process_external_surfaces, boost::placeholders::_1),
-        this->_print->config.threads.value
+        boost::bind(&Slic3r::Layer::process_external_surfaces, boost::placeholders::_1)
     );
 }
 
@@ -877,8 +875,7 @@ void PrintObject::_slice()
     }
     parallelize<SurfaceCollection*>(
         queue,
-        boost::bind(&Slic3r::SurfaceCollection::remove_collinear_points, boost::placeholders::_1),
-        this->_print->config.threads.value
+        boost::bind(&Slic3r::SurfaceCollection::remove_collinear_points, boost::placeholders::_1)
     );
 
     // Apply size compensation and perform clipping of multi-part objects.
@@ -1195,8 +1192,7 @@ PrintObject::make_perimeters()
     
     parallelize<Layer*>(
         std::queue<Layer*>(std::deque<Layer*>(this->layers.begin(), this->layers.end())),  // cast LayerPtrs to std::queue<Layer*>
-        boost::bind(&Slic3r::Layer::make_perimeters, boost::placeholders::_1),
-        this->_print->config.threads.value
+        boost::bind(&Slic3r::Layer::make_perimeters, boost::placeholders::_1)
     );
     
     /*
@@ -1220,8 +1216,7 @@ PrintObject::infill()
     
     parallelize<Layer*>(
         std::queue<Layer*>(std::deque<Layer*>(this->layers.begin(), this->layers.end())),  // cast LayerPtrs to std::queue<Layer*>
-        boost::bind(&Slic3r::Layer::make_fills, boost::placeholders::_1),
-        this->_print->config.threads.value
+        boost::bind(&Slic3r::Layer::make_fills, boost::placeholders::_1)
     );
     
     /*  we could free memory now, but this would make this step not idempotent
